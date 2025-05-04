@@ -50,6 +50,12 @@ func (s *Server) setupRoutes() {
 		apiRoutes.GET("/galleries/:id", s.getGallery)
 		apiRoutes.PUT("/galleries/:id", s.updateGallery)
 		apiRoutes.DELETE("/galleries/:id", s.deleteGallery)
+
+		apiRoutes.GET("/categories", s.getCategories)
+		apiRoutes.POST("/categories", s.createCategory)
+		apiRoutes.GET("/categories/:id", s.getCategory)
+		apiRoutes.PUT("/categories/:id", s.updateCategory)
+		apiRoutes.DELETE("/categories/:id", s.deleteCategory)
 	}
 }
 

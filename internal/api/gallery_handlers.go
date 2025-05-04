@@ -5,7 +5,15 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 )
+
+type GalleryRequest struct {
+	Title    	string `json:"title" binding:"required,max=100"`
+	Description string `json:"description" binding:"required,max=500"`
+	ImageURL   	string `json:"image_url" binding:"required,url"`
+	Category   	string `json:"category" binding:"required"`
+}
 
 func (s *Server) getGalleries(c *gin.Context) {
 	userID := c.GetUint("user_id")
@@ -27,13 +35,44 @@ func (s *Server) getGallery(c *gin.Context) {
 
 func (s *Server) createGallery(c *gin.Context) {
 	userID := c.GetUint("user_id")
-	var gallery models.Gallery
-	if err := c.ShouldBindJSON(&gallery); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	var req GalleryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		if validationErrors, ok := err.(validator.ValidationErrors); ok {
+			errorMessages := make(map[string]string)
+			for _, e := range validationErrors {
+				switch e.Field() {
+				case "Category":
+					if e.Tag() == "required" {
+						errorMessages["category"] = "Category is required" 
+					}
+				}
+			}
+			c.JSON(http.StatusBadRequest, gin.H{"errors": errorMessages})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
 		return
 	}
-	gallery.UserID = userID
-	s.db.Create(&gallery)
+
+	// Check if user exists
+	var user models.User
+	if result := s.db.First(&user, userID); result.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user"})
+		return
+	}
+
+	gallery := models.Gallery{
+		Title:       	req.Title,
+		Description: 	req.Description,
+		ImageURL:    	req.ImageURL,
+		Category:		req.Category,
+		UserID:      	userID,
+		// Set other fields as needed
+	}
+	if result := s.db.Create(&gallery); result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create gallery"})
+		return
+	}
 	c.JSON(http.StatusCreated, gallery)
 }
 
@@ -56,6 +95,7 @@ func (s *Server) updateGallery(c *gin.Context) {
 		Title:       input.Title,
 		Description: input.Description,
 		ImageURL:    input.ImageURL,
+		Category:    input.Category,
 	})
 
 	c.JSON(http.StatusOK, gallery)

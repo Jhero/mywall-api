@@ -3,8 +3,6 @@ package config
 import (
 	"os"
 	"strconv"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 )
 
 // Config holds all configuration for the application
@@ -19,7 +17,6 @@ type Config struct {
 	DBPassword       	string
 	DBName           	string	
 	DatabaseURL 		string
-	OAuthConfig 		*oauth2.Config
 }
 
 // New creates a new Config with values from environment variables
@@ -36,15 +33,5 @@ func New() *Config {
 		JWTExpiryHours:   	jwtExpiryHours,
 		APIKeyHeader:     	os.Getenv("API_KEY_HEADER"),
 		DatabaseURL: 		os.Getenv("DATABASE_URL"),
-		OAuthConfig: 		&oauth2.Config{
-			ClientID:     	os.Getenv("GOOGLE_CLIENT_ID"),
-			ClientSecret: 	os.Getenv("GOOGLE_CLIENT_SECRET"),
-			RedirectURL:  	os.Getenv("OAUTH_REDIRECT_URL"),
-			Scopes: []string{
-				"https://www.googleapis.com/auth/userinfo.email",
-				"https://www.googleapis.com/auth/userinfo.profile",
-			},
-			Endpoint: 		google.Endpoint,
-		},
 	}
 }
