@@ -6,20 +6,21 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"mywall-api/internal/helpers"
 )
 
 type GalleryRequest struct {
 	Title    	string `json:"title" binding:"required,max=100"`
 	Description string `json:"description" binding:"required,max=500"`
 	ImageURL   	string `json:"image_url" binding:"required,url"`
-	Category   	string `json:"category" binding:"required"`
+	CategoryID  uint   `json:"category_id" binding:"required"`
 }
 
 func (s *Server) getGalleries(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	var galleries []models.Gallery
 	s.db.Where("user_id = ?", userID).Find(&galleries)
-	c.JSON(http.StatusOK, galleries)
+	helpers.Success(c, "Gallies retrieved successfully", galleries)	
 }
 
 func (s *Server) getGallery(c *gin.Context) {
@@ -30,7 +31,7 @@ func (s *Server) getGallery(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Gallery not found"})
 		return
 	}
-	c.JSON(http.StatusOK, gallery)
+	helpers.Success(c, "Gallery retrieved successfully", gallery)	
 }
 
 func (s *Server) createGallery(c *gin.Context) {
@@ -41,16 +42,24 @@ func (s *Server) createGallery(c *gin.Context) {
 			errorMessages := make(map[string]string)
 			for _, e := range validationErrors {
 				switch e.Field() {
-				case "Category":
-					if e.Tag() == "required" {
-						errorMessages["category"] = "Category is required" 
-					}
+					case "CategoryID":
+						if e.Tag() == "required" {
+							errorMessages["category_id"] = "Category ID is required" 
+						}
+					case "Title":
+						if e.Tag() == "required" {
+							errorMessages["title"] = "Title is required" 
+						}
+					case "ImageURL":
+						if e.Tag() == "required" {
+							errorMessages["image_url"] = "Image URL is required" 
+						}
 				}
 			}
-			c.JSON(http.StatusBadRequest, gin.H{"errors": errorMessages})
+			helpers.ValidationError(c,"Validation failed", errorMessages)	
 			return
 		}
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		helpers.BadRequest(c,"Invalid request data")	
 		return
 	}
 
@@ -61,11 +70,19 @@ func (s *Server) createGallery(c *gin.Context) {
 		return
 	}
 
+	// Check if category exists
+	var category models.Category
+	if result := s.db.First(&category, req.CategoryID); result.Error != nil {
+		// log.Printf("Looking up category with ID: %d", req.CategoryID)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category"})
+		return
+	}
+	
 	gallery := models.Gallery{
 		Title:       	req.Title,
 		Description: 	req.Description,
 		ImageURL:    	req.ImageURL,
-		Category:		req.Category,
+		CategoryID:		req.CategoryID,
 		UserID:      	userID,
 		// Set other fields as needed
 	}
@@ -95,7 +112,7 @@ func (s *Server) updateGallery(c *gin.Context) {
 		Title:       input.Title,
 		Description: input.Description,
 		ImageURL:    input.ImageURL,
-		Category:    input.Category,
+		CategoryID:  input.CategoryID,
 	})
 
 	c.JSON(http.StatusOK, gallery)

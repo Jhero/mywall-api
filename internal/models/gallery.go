@@ -8,6 +8,6 @@ type Gallery struct {
 	Title       string `json:"title" gorm:"unique"`
 	Description string `json:"description"`
 	ImageURL    string `json:"image_url" gorm:"not null"`
-	Category    string `json:"category" gorm:"not null"`
+	CategoryID  uint   `json:"category_id" gorm:"not null"`
 	UserID      uint   `json:"user_id"`
 }
