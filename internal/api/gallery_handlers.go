@@ -66,7 +66,7 @@ func (s *Server) createGallery(c *gin.Context) {
 	// Check if user exists
 	var user models.User
 	if result := s.db.First(&user, userID); result.Error != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user"})
+		helpers.NotFound(c,"Invalid user")
 		return
 	}
 
@@ -74,7 +74,7 @@ func (s *Server) createGallery(c *gin.Context) {
 	var category models.Category
 	if result := s.db.First(&category, req.CategoryID); result.Error != nil {
 		// log.Printf("Looking up category with ID: %d", req.CategoryID)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category"})
+		helpers.BadRequest(c,"Invalid category")
 		return
 	}
 	
@@ -87,10 +87,10 @@ func (s *Server) createGallery(c *gin.Context) {
 		// Set other fields as needed
 	}
 	if result := s.db.Create(&gallery); result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create gallery"})
+		helpers.InternalServerError(c,"Failed to create gallery")
 		return
 	}
-	c.JSON(http.StatusCreated, gallery)
+	helpers.Created(c,"Gallery created successfully",gallery)
 }
 
 func (s *Server) updateGallery(c *gin.Context) {
@@ -98,13 +98,13 @@ func (s *Server) updateGallery(c *gin.Context) {
 	id := c.Param("id")
 	var gallery models.Gallery
 	if err := s.db.Where("id = ? AND user_id = ?", id, userID).First(&gallery).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Gallery not found"})
+		helpers.NotFound(c,"Gallery not found")
 		return
 	}
 
 	var input models.Gallery
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		helpers.BadRequest(c,err.Error())
 		return
 	}
 
@@ -114,8 +114,7 @@ func (s *Server) updateGallery(c *gin.Context) {
 		ImageURL:    input.ImageURL,
 		CategoryID:  input.CategoryID,
 	})
-
-	c.JSON(http.StatusOK, gallery)
+	helpers.Success(c, "Gallery updated successfully", gallery)
 }
 
 func (s *Server) deleteGallery(c *gin.Context) {
@@ -123,9 +122,9 @@ func (s *Server) deleteGallery(c *gin.Context) {
 	id := c.Param("id")
 	var gallery models.Gallery
 	if err := s.db.Where("id = ? AND user_id = ?", id, userID).First(&gallery).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Gallery not found"})
+		helpers.NotFound(c, "Gallery not found")
 		return
 	}
 	s.db.Delete(&gallery)
-	c.JSON(http.StatusOK, gin.H{"message": "Gallery deleted"})
+	helpers.Success(c, "Gallery deleted", gallery)	
 }

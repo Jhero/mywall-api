@@ -3,11 +3,11 @@ package api
 import (
 	"mywall-api/internal/auth"
 	// "mywall/internal/models"
-	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"mywall-api/internal/helpers"
 )
 
 // Server represents the HTTP server
@@ -91,8 +91,7 @@ func (s *Server) authMiddleware() gin.HandlerFunc {
 				return
 			}
 		}
-
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Valid authorization token or API key required"})
+		helpers.Unauthorized(c, "Valid authorization token or API key required")
 		c.Abort()
 	}
 }
