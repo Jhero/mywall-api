@@ -56,6 +56,13 @@ func (s *Server) setupRoutes() {
 		apiRoutes.GET("/categories/:id", s.getCategory)
 		apiRoutes.PUT("/categories/:id", s.updateCategory)
 		apiRoutes.DELETE("/categories/:id", s.deleteCategory)
+
+		apiRoutes.GET("/menus", s.getMenus)
+		apiRoutes.POST("/menus", s.createMenu)
+		apiRoutes.GET("/menus/:id", s.getMenu)
+		apiRoutes.PUT("/menus/:id", s.updateMenu)
+		apiRoutes.DELETE("/menus/:id", s.deleteMenu)
+
 	}
 }
 
@@ -91,7 +98,7 @@ func (s *Server) authMiddleware() gin.HandlerFunc {
 				return
 			}
 		}
-		helpers.Unauthorized(c, "Valid authorization token or API key required")
+		helpers.Unauthorized(c, "Invalid authorization token or API key required")
 		c.Abort()
 	}
 }
