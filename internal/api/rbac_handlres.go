@@ -22,6 +22,7 @@ type PermissionStruct struct {
 	Edit    bool   `json:"edit"`
 	Delete  bool   `json:"delete"`
 	Create  bool   `json:"create"`
+	Search  bool   `json:"search"`
 }
 
 func (s *Server) getRbacs(c *gin.Context) {
