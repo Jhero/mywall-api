@@ -63,6 +63,19 @@ func (s *Server) setupRoutes() {
 		apiRoutes.PUT("/menus/:id", s.updateMenu)
 		apiRoutes.DELETE("/menus/:id", s.deleteMenu)
 
+
+		apiRoutes.GET("/rbacs", s.getRbacs)
+		apiRoutes.POST("/rbacs", s.createRbac)
+		apiRoutes.GET("/rbacs/:id", s.getRbac)
+		apiRoutes.PUT("/rbacs/:id", s.updateRbac)
+		apiRoutes.DELETE("/rbacs/:id", s.deleteRbac)
+
+		apiRoutes.GET("/roles", s.getRoles)
+		apiRoutes.POST("/roles", s.createRole)
+		apiRoutes.GET("/roles/:id", s.getRole)
+		apiRoutes.PUT("/roles/:id", s.updateRole)
+		apiRoutes.DELETE("/roles/:id", s.deleteRole)
+
 	}
 }
 

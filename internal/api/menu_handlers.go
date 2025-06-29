@@ -3,7 +3,7 @@ package api
 import (
 	"mywall-api/internal/models"
 	"net/http"
-
+	// "fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"mywall-api/internal/helpers"
@@ -16,6 +16,7 @@ type MenuRequest struct {
 
 func (s *Server) getMenus(c *gin.Context) {
 	userID := c.GetUint("user_id")
+	// fmt.Println("User ID:", userID)
 	var menus []models.Menu
 	s.db.Where("user_id = ?", userID).Find(&menus)
 	helpers.Success(c, "Menus retrieved successfully", menus)	

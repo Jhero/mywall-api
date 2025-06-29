@@ -12,3 +12,8 @@ type User struct {
 	Role         string `json:"role" gorm:"default:'user'"`
 	IsActive     bool   `json:"is_active" gorm:"default:true"`
 }
+
+// TableName specifies the table name for User
+func (User) TableName() string {
+	return "users"
+}

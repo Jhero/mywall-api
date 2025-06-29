@@ -3,21 +3,31 @@ package api
 import (
 	"mywall-api/internal/models"
 	"net/http"
-
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"mywall-api/internal/helpers"
+	"fmt"
 )
 
 type RbacRequest struct {
-	MenuID    	string `json:"menu_id" binding:"required,max=50"`
-	Permission 	string `json:"permission" binding:"required,max=200"`
+	MenuID    	string 				`json:"menu_id" binding:"required,max=50"`
+	Permission 	PermissionStruct 	`json:"permission" binding:"required"`
+	RoleID 		string 				`json:"role_id" binding:"required,max=20"`
+}
+
+// Permission structure
+type PermissionStruct struct {
+	Read    bool   `json:"read"`
+	Edit    bool   `json:"edit"`
+	Delete  bool   `json:"delete"`
+	Create  bool   `json:"create"`
 }
 
 func (s *Server) getRbacs(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	var rbacs []models.Rbac
-	s.db.Where("user_id = ?", userID).Find(&rbacs)
+	s.db.Where("user_id = ?", userID).Find(&rbacs)	
 	helpers.Success(c, "Rbacs retrieved successfully", rbacs)	
 }
 
@@ -48,9 +58,9 @@ func (s *Server) createRbac(c *gin.Context) {
 						if e.Tag() == "required" {
 							errorMessages["permission"] = "Permission is required" 
 						}
-					case "UserID":
+					case "RoleID":
 						if e.Tag() == "required" {
-							errorMessages["user_id"] = "User ID is required" 
+							errorMessages["role_id"] = "Role ID is required" 
 						}
 				}
 			}
@@ -67,11 +77,28 @@ func (s *Server) createRbac(c *gin.Context) {
 		helpers.NotFound(c,"Invalid user")
 		return
 	}
+
+	// Check if role exists for role_id
+	var role models.Role
+	roleID := req.RoleID
+	fmt.Println("Role ID:", roleID)
+	if result := s.db.Where("id = ?", roleID).First(&role); result.Error != nil {
+		helpers.NotFound(c,"Invalid role")
+		return
+	}
+
+	// Convert permission struct to JSON string
+	permissionJSON, err := json.Marshal(req.Permission)
+	if err != nil {
+		helpers.InternalServerError(c, "Failed to process permission data")
+		return
+	}
 	
 	rbac := models.Rbac{
 		MenuID:       	req.MenuID,
-		Permission: 	req.Permission,
+		Permission: 	string(permissionJSON),
 		UserID:      	userID,
+		RoleID:      	req.RoleID,
 		// Set other fields as needed
 	}
 	if result := s.db.Create(&rbac); result.Error != nil {
