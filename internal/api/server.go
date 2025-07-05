@@ -44,6 +44,8 @@ func (s *Server) setupRoutes() {
 		// API key management
 		apiRoutes.POST("/regenerate-api-key", s.handleRegenerateApiKey)
 
+		apiRoutes.GET("/images/:year/:month/:day/:filename", s.serveImage)
+
 		// Other API routes
 		apiRoutes.GET("/galleries", s.getGalleries)
 		apiRoutes.POST("/galleries", s.createGallery)
