@@ -236,12 +236,3 @@ func saveUploadedFile(file multipart.File, header *multipart.FileHeader) (string
 	
 	return filePath, nil
 }
-
-// Helper function to delete file when gallery is deleted
-func deleteGalleryFile(imageURL string) error {
-	// Only delete if it's a local file (not an external URL)
-	if !strings.HasPrefix(imageURL, "http") && imageURL != "" {
-		return os.Remove(imageURL)
-	}
-	return nil
-}
