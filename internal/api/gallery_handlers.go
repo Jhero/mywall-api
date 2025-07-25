@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"math"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -23,11 +24,94 @@ type GalleryRequest struct {
 	CategoryID  uint   `json:"category_id" binding:"required"`
 }
 
+// func (s *Server) getGalleries(c *gin.Context) {
+// 	userID := c.GetUint("user_id")
+// 	var galleries []models.Gallery
+// 	s.db.Where("user_id = ?", userID).Find(&galleries)
+// 	helpers.Success(c, "Gallies retrieved successfully", galleries)	
+// }
+
 func (s *Server) getGalleries(c *gin.Context) {
 	userID := c.GetUint("user_id")
+	
+	// Get query parameters for filtering
+	categoryID := c.Query("category_id")
+	title := c.Query("title")
+	
+	// Get pagination parameters
+	page := c.DefaultQuery("page", "1")
+	limit := c.DefaultQuery("limit", "10")
+	
+	// Convert pagination parameters
+	pageInt, err := strconv.Atoi(page)
+	if err != nil || pageInt < 1 {
+		pageInt = 1
+	}
+	
+	limitInt, err := strconv.Atoi(limit)
+	if err != nil || limitInt < 1 || limitInt > 100 {
+		limitInt = 10
+	}
+	
+	offset := (pageInt - 1) * limitInt
+	
+	// Build query with base condition
+	query := s.db.Model(&models.Gallery{}).Where("user_id = ?", userID)
+	
+	// Apply filters
+	if categoryID != "" {
+		if catID, err := strconv.ParseUint(categoryID, 10, 32); err == nil {
+			query = query.Where("category_id = ?", uint(catID))
+		}
+	}
+	
+	if title != "" {
+		// Case-insensitive search using ILIKE for PostgreSQL or LIKE for MySQL
+		query = query.Where("LOWER(title) LIKE LOWER(?)", "%"+title+"%")
+	}
+	
+	// Get total count for pagination
+	var total int64
+	countQuery := query
+	if err := countQuery.Count(&total).Error; err != nil {
+		helpers.NotFound(c, "Failed to count galleries")
+		return
+	}
+	
+	// Get galleries with pagination - removed preload since no relations defined in model
 	var galleries []models.Gallery
-	s.db.Where("user_id = ?", userID).Find(&galleries)
-	helpers.Success(c, "Gallies retrieved successfully", galleries)	
+	if err := query.
+		Order("created_at DESC").   // Order by creation date (gorm.Model includes CreatedAt)
+		Limit(limitInt).
+		Offset(offset).
+		Find(&galleries).Error; err != nil {
+		helpers.NotFound(c, "Failed to retrieve galleries")
+		return
+	}
+	
+	// Calculate pagination metadata
+	totalPages := int(math.Ceil(float64(total) / float64(limitInt)))
+	hasNext := pageInt < totalPages
+	hasPrev := pageInt > 1
+	
+	// Response with metadata
+	response := gin.H{
+		"data": galleries,
+		"pagination": gin.H{
+			"current_page":  pageInt,
+			"total_pages":   totalPages,
+			"total_items":   total,
+			"items_per_page": limitInt,
+			"has_next":      hasNext,
+			"has_previous":  hasPrev,
+		},
+		"filters": gin.H{
+			"category_id": categoryID,
+			"title":      title,
+		},
+	}
+	
+	helpers.Success(c, "Galleries retrieved successfully", response)
 }
 
 func (s *Server) getGallery(c *gin.Context) {
