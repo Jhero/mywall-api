@@ -305,10 +305,9 @@ func (s *Server) updateGallery(c *gin.Context) {
 	var input struct {
 		Title       string `form:"title" binding:"required,min=1,max=100"`
 		Description string `form:"description" binding:"max=500"`
-		CategoryID  string `form:"category_id" binding:"required"`
+		CategoryID  uint   `form:"category_id" binding:"required"`
 		ImageURL    string // akan di-set dari file upload atau existing
 	}
-
 	// Bind form data
 	if err := c.ShouldBind(&input); err != nil {
 		helpers.BadRequest(c, "Invalid form data: "+err.Error())
@@ -316,7 +315,8 @@ func (s *Server) updateGallery(c *gin.Context) {
 	}
 
 	// 5. Validasi dan konversi category_id
-	categoryID, err := strconv.ParseUint(input.CategoryID, 10, 32)
+	categoryID := input.CategoryID
+	fmt.Printf("Input received: %+v\n", categoryID)
 	if err != nil {
 		helpers.BadRequest(c, "Invalid category_id format")
 		return
@@ -376,7 +376,7 @@ func (s *Server) updateGallery(c *gin.Context) {
 		Title:       input.Title,
 		Description: input.Description,
 		ImageURL:    imageURL,
-		CategoryID:  uint(categoryID),
+		CategoryID:  categoryID,
 	}
 
 	if err := s.db.Model(&gallery).Updates(updateData).Error; err != nil {
