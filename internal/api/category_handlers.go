@@ -3,20 +3,100 @@ package api
 import (
 	"mywall-api/internal/models"
 	"net/http"
+	"math"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"mywall-api/internal/helpers"
 )
 
 type CategoryRequest struct {
 	Name    	string `json:"name" binding:"required,max=50"`
 }
 
+/*
 func (s *Server) getCategories(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	var categories []models.Category
 	s.db.Where("user_id = ?", userID).Find(&categories)
 	c.JSON(http.StatusOK, categories)
+}
+*/
+
+func (s *Server) getCategories(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	
+	// Get query parameters for filtering
+	name := c.Query("name")
+	
+	// Get pagination parameters
+	page := c.DefaultQuery("page", "1")
+	limit := c.DefaultQuery("limit", "10")
+	
+	// Convert pagination parameters
+	pageInt, err := strconv.Atoi(page)
+	if err != nil || pageInt < 1 {
+		pageInt = 1
+	}
+	
+	limitInt, err := strconv.Atoi(limit)
+	if err != nil || limitInt < 1 || limitInt > 100 {
+		limitInt = 10
+	}
+	
+	offset := (pageInt - 1) * limitInt
+	
+	// Build query with base condition
+	query := s.db.Model(&models.Category{}).Where("user_id = ?", userID)
+	
+	
+	if name != "" {
+		// Case-insensitive search using LOWER for better compatibility
+		query = query.Where("LOWER(name) LIKE LOWER(?)", "%"+name+"%")
+	}
+	
+	// Get total count for pagination
+	var total int64
+	countQuery := query
+	if err := countQuery.Count(&total).Error; err != nil {
+		helpers.NotFound(c, "Failed to count categories")
+		return
+	}
+	
+	// Get categories with pagination
+	var categories []models.Category
+	if err := query.
+		Order("created_at DESC").
+		Limit(limitInt).
+		Offset(offset).
+		Find(&categories).Error; err != nil {
+		helpers.NotFound(c, "Failed to retrieve categories")
+		return
+	}
+	
+	// Calculate pagination metadata
+	totalPages := int(math.Ceil(float64(total) / float64(limitInt)))
+	hasNext := pageInt < totalPages
+	hasPrev := pageInt > 1
+	
+	// Response with metadata
+	response := gin.H{
+		"data": categories,
+		"pagination": gin.H{
+			"current_page":   pageInt,
+			"total_pages":    totalPages,
+			"total_items":    total,
+			"items_per_page": limitInt,
+			"has_next":       hasNext,
+			"has_previous":   hasPrev,
+		},
+		"filters": gin.H{
+			"name":       name,
+		},
+	}
+	
+	helpers.Success(c, "Categories retrieved successfully", response)
 }
 
 func (s *Server) getCategory(c *gin.Context) {

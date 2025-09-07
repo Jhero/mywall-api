@@ -27,13 +27,6 @@ type GalleryRequest struct {
 	CategoryID  uint   `json:"category_id" binding:"required"`
 }
 
-// func (s *Server) getGalleries(c *gin.Context) {
-// 	userID := c.GetUint("user_id")
-// 	var galleries []models.Gallery
-// 	s.db.Where("user_id = ?", userID).Find(&galleries)
-// 	helpers.Success(c, "Gallies retrieved successfully", galleries)	
-// }
-
 func (s *Server) getGalleries(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	
@@ -241,32 +234,6 @@ func (s *Server) createGallery(c *gin.Context) {
 	
 	helpers.Created(c, "Gallery created successfully", gallery)
 }
-
-/*
-func (s *Server) updateGallery(c *gin.Context) {
-	userID := c.GetUint("user_id")
-	id := c.Param("id")
-	var gallery models.Gallery
-	if err := s.db.Where("id = ? AND user_id = ?", id, userID).First(&gallery).Error; err != nil {
-		helpers.NotFound(c,"Gallery not found")
-		return
-	}
-
-	var input models.Gallery
-	if err := c.ShouldBindJSON(&input); err != nil {
-		helpers.BadRequest(c,err.Error())
-		return
-	}
-
-	s.db.Model(&gallery).Updates(models.Gallery{
-		Title:       input.Title,
-		Description: input.Description,
-		ImageURL:    input.ImageURL,
-		CategoryID:  input.CategoryID,
-	})
-	helpers.Success(c, "Gallery updated successfully", gallery)
-}
-*/
 
 func (s *Server) updateGallery(c *gin.Context) {
 	// 1. Validasi user_id dari context
