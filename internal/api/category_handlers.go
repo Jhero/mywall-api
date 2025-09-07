@@ -15,20 +15,91 @@ type CategoryRequest struct {
 	Name    	string `json:"name" binding:"required,max=50"`
 }
 
-/*
-func (s *Server) getCategories(c *gin.Context) {
-	userID := c.GetUint("user_id")
-	var categories []models.Category
-	s.db.Where("user_id = ?", userID).Find(&categories)
-	c.JSON(http.StatusOK, categories)
-}
-*/
+// func (s *Server) getCategories(c *gin.Context) {
+// 	userID := c.GetUint("user_id")
+	
+// 	// Get query parameters for filtering
+// 	name := c.Query("name")
+	
+// 	// Get pagination parameters
+// 	page := c.DefaultQuery("page", "1")
+// 	limit := c.DefaultQuery("limit", "10")
+	
+// 	// Convert pagination parameters
+// 	pageInt, err := strconv.Atoi(page)
+// 	if err != nil || pageInt < 1 {
+// 		pageInt = 1
+// 	}
+	
+// 	limitInt, err := strconv.Atoi(limit)
+// 	if err != nil || limitInt < 1 || limitInt > 100 {
+// 		limitInt = 10
+// 	}
+	
+// 	offset := (pageInt - 1) * limitInt
+	
+// 	// Build query with base condition
+// 	query := s.db.Model(&models.Category{}).Where("user_id = ?", userID)
+	
+	
+// 	if name != "" {
+		
+// 		// Case-insensitive search using LOWER for better compatibility
+// 		query = query.Where("LOWER(name) LIKE LOWER(?)", "%"+name+"%")
+// 	}
+	
+// 	// Get total count for pagination
+// 	var total int64
+// 	countQuery := query
+// 	if err := countQuery.Count(&total).Error; err != nil {
+// 		helpers.NotFound(c, "Failed to count categories")
+// 		return
+// 	}
+	
+// 	// Get categories with pagination
+// 	var categories []models.Category
+// 	if err := query.
+// 		Order("created_at DESC").
+// 		Limit(limitInt).
+// 		Offset(offset).
+// 		Find(&categories).Error; err != nil {
+// 		helpers.NotFound(c, "Failed to retrieve categories")
+// 		return
+// 	}
+	
+// 	// Calculate pagination metadata
+// 	totalPages := int(math.Ceil(float64(total) / float64(limitInt)))
+// 	hasNext := pageInt < totalPages
+// 	hasPrev := pageInt > 1
+	
+// 	// Response with metadata
+// 	response := gin.H{
+// 		"data": categories,
+// 		"pagination": gin.H{
+// 			"current_page":   pageInt,
+// 			"total_pages":    totalPages,
+// 			"total_items":    total,
+// 			"items_per_page": limitInt,
+// 			"has_next":       hasNext,
+// 			"has_previous":   hasPrev,
+// 		},
+// 		"filters": gin.H{
+// 			"name":       name,
+// 		},
+// 	}
+	
+// 	helpers.Success(c, "Categories retrieved successfully", response)
+// }
 
 func (s *Server) getCategories(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	
 	// Get query parameters for filtering
 	name := c.Query("name")
+	
+	// Get sorting parameters
+	sortBy := c.DefaultQuery("sort_by", "created_at")
+	sortOrder := c.DefaultQuery("sort_order", "desc")
 	
 	// Get pagination parameters
 	page := c.DefaultQuery("page", "1")
@@ -50,10 +121,28 @@ func (s *Server) getCategories(c *gin.Context) {
 	// Build query with base condition
 	query := s.db.Model(&models.Category{}).Where("user_id = ?", userID)
 	
-	
 	if name != "" {
 		// Case-insensitive search using LOWER for better compatibility
 		query = query.Where("LOWER(name) LIKE LOWER(?)", "%"+name+"%")
+	}
+	
+	// Validate and build sort order
+	var orderBy string
+	switch sortBy {
+	case "name":
+		if sortOrder == "asc" {
+			orderBy = "name ASC"
+		} else {
+			orderBy = "name DESC"
+		}
+	case "created_at":
+		if sortOrder == "asc" {
+			orderBy = "created_at ASC"
+		} else {
+			orderBy = "created_at DESC"
+		}
+	default:
+		orderBy = "created_at DESC" // Default fallback
 	}
 	
 	// Get total count for pagination
@@ -64,10 +153,10 @@ func (s *Server) getCategories(c *gin.Context) {
 		return
 	}
 	
-	// Get categories with pagination
+	// Get categories with pagination and sorting
 	var categories []models.Category
 	if err := query.
-		Order("created_at DESC").
+		Order(orderBy).
 		Limit(limitInt).
 		Offset(offset).
 		Find(&categories).Error; err != nil {
@@ -93,6 +182,10 @@ func (s *Server) getCategories(c *gin.Context) {
 		},
 		"filters": gin.H{
 			"name":       name,
+		},
+		"sorting": gin.H{
+			"sort_by":    sortBy,
+			"sort_order": sortOrder,
 		},
 	}
 	
