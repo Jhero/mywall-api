@@ -361,6 +361,7 @@ func (s *Server) updateGallery(c *gin.Context) {
 }
 
 // Helper function untuk upload image
+/*
 func (s *Server) uploadImage(file multipart.File, header *multipart.FileHeader) (string, error) {
 	// Generate unique filename
 	ext := filepath.Ext(header.Filename)
@@ -388,6 +389,7 @@ func (s *Server) uploadImage(file multipart.File, header *multipart.FileHeader) 
 	// Return URL (adjust based on your static file serving setup)
 	return fmt.Sprintf("/uploads/galleries/%s", filename), nil
 }
+*/
 
 // Helper function untuk generate random string
 func generateRandomString(length int) string {
