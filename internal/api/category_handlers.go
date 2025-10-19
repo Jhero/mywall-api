@@ -178,8 +178,8 @@ func (s *Server) createCategory(c *gin.Context) {
 		return
 	}
 
-	// Save the uploaded file using shared utility function
-	filePath, err := SaveUploadedFile(file, header)
+	// Save and optimize the uploaded image (resize + compress)
+	filePath, err := SaveAndOptimizeImage(file, header)
 	if err != nil {
 		helpers.InternalServerError(c, "Failed to save image file")
 		return
@@ -211,18 +211,158 @@ func (s *Server) updateCategory(c *gin.Context) {
 		return
 	}
 
-	var input models.Category
-	if err := c.ShouldBindJSON(&input); err != nil {
-		helpers.BadRequest(c, "Invalid request data")
-		return
+	// Get name from form data
+	name := strings.TrimSpace(c.PostForm("name"))
+	
+	// Validate name field if provided
+	if name != "" {
+		if len(name) > 50 {
+			helpers.ValidationError(c, "Validation failed", map[string]string{
+				"name": "Name must not exceed 50 characters",
+			})
+			return
+		}
+		category.Name = name
 	}
 
-	s.db.Model(&category).Updates(models.Category{
-		Name: input.Name,
-	})
+	// Handle image upload (optional)
+	file, header, err := c.Request.FormFile("image")
+	if err == nil && file != nil {
+		defer file.Close()
+		
+		// Validate file type using shared utility function
+		if !IsValidImageFile(header.Filename) {
+			helpers.BadRequest(c, "Invalid file type. Only JPG, JPEG, and PNG files are allowed")
+			return
+		}
+		
+		// Validate file size (5MB limit)
+		const maxFileSize = 5 * 1024 * 1024 // 5MB
+		if header.Size > maxFileSize {
+			helpers.BadRequest(c, "File size too large. Maximum allowed size is 5MB")
+			return
+		}
+
+		// Save and optimize the uploaded image (resize + compress)
+		newFilePath, err := SaveAndOptimizeImage(file, header)
+		if err != nil {
+			helpers.InternalServerError(c, "Failed to save image file")
+			return
+		}
+
+		// Store old image path for cleanup
+		oldImagePath := category.ImageURL
+		
+		// Update category with new image path
+		category.ImageURL = newFilePath
+
+		// Save to database first
+		if result := s.db.Save(&category); result.Error != nil {
+			// If database update fails, clean up the new file
+			os.Remove(newFilePath)
+			helpers.InternalServerError(c, "Failed to update category")
+			return
+		}
+
+		// Delete old image file if it exists and update was successful
+		if oldImagePath != "" {
+			if err := os.Remove(oldImagePath); err != nil {
+				// Log the error but don't fail the update
+				// fmt.Printf("Warning: Failed to delete old image file %s: %v\n", oldImagePath, err)
+			}
+		}
+	} else {
+		// No new image uploaded, just update other fields
+		if result := s.db.Save(&category); result.Error != nil {
+			helpers.InternalServerError(c, "Failed to update category")
+			return
+		}
+	}
 
 	helpers.Success(c, "Category updated successfully", category)
 }
+/*
+func (s *Server) updateCategory(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	id := c.Param("id")
+	var category models.Category
+	if err := s.db.Where("id = ? AND user_id = ?", id, userID).First(&category).Error; err != nil {
+		helpers.NotFound(c, "Category not found")
+		return
+	}
+
+	// Get name from form data
+	name := strings.TrimSpace(c.PostForm("name"))
+	
+	// Validate name field if provided
+	if name != "" {
+		if len(name) > 50 {
+			helpers.ValidationError(c, "Validation failed", map[string]string{
+				"name": "Name must not exceed 50 characters",
+			})
+			return
+		}
+		category.Name = name
+	}
+
+	// Handle image upload (optional)
+	file, header, err := c.Request.FormFile("image")
+	if err == nil && file != nil {
+		defer file.Close()
+		
+		// Validate file type using shared utility function
+		if !IsValidImageFile(header.Filename) {
+			helpers.BadRequest(c, "Invalid file type. Only JPG, JPEG, and PNG files are allowed")
+			return
+		}
+		
+		// Validate file size (5MB limit)
+		const maxFileSize = 5 * 1024 * 1024 // 5MB
+		if header.Size > maxFileSize {
+			helpers.BadRequest(c, "File size too large. Maximum allowed size is 5MB")
+			return
+		}
+
+		// Save the new uploaded file using shared utility function
+		newFilePath, err := SaveUploadedFile(file, header)
+		if err != nil {
+			helpers.InternalServerError(c, "Failed to save image file")
+			return
+		}
+
+		// Store old image path for cleanup
+		oldImagePath := category.ImageURL
+		
+		// Update category with new image path
+		category.ImageURL = newFilePath
+
+		// Save to database first
+		if result := s.db.Save(&category); result.Error != nil {
+			// If database update fails, clean up the new file
+			os.Remove(newFilePath)
+			helpers.InternalServerError(c, "Failed to update category")
+			return
+		}
+
+		// Delete old image file if it exists and update was successful
+		if oldImagePath != "" {
+			if err := os.Remove(oldImagePath); err != nil {
+				// Log the error but don't fail the update
+				// fmt.Printf("Warning: Failed to delete old image file %s: %v\n", oldImagePath, err)
+			}
+		}
+	} else {
+		// No new image uploaded, just update other fields
+		if result := s.db.Save(&category); result.Error != nil {
+			helpers.InternalServerError(c, "Failed to update category")
+			return
+		}
+	}
+
+	helpers.Success(c, "Category updated successfully", category)
+}
+*/
+
 
 func (s *Server) deleteCategory(c *gin.Context) {
 	userID := c.GetUint("user_id")

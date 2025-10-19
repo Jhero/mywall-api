@@ -4,17 +4,12 @@ import (
 	"mywall-api/internal/models"
 	"net/http"
 	"fmt"
-	"io"
-	"mime/multipart"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 	"math"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"mywall-api/internal/helpers"
 	"gorm.io/gorm"
 	"math/rand"
@@ -181,7 +176,7 @@ func (s *Server) createGallery(c *gin.Context) {
 	defer file.Close()
 	
 	// Validate file type
-	if !isValidImageFile(header.Filename) {
+	if !IsValidImageFile(header.Filename) {
 		helpers.BadRequest(c, "Invalid file type. Only JPG and PNG files are allowed")
 		return
 	}
@@ -208,7 +203,7 @@ func (s *Server) createGallery(c *gin.Context) {
 	}
 	
 	// Create directory structure and save file
-	filePath, err := saveUploadedFile(file, header)
+	filePath, err := SaveUploadedFile(file, header)
 	if err != nil {
 		helpers.InternalServerError(c, "Failed to save image file")
 		return
@@ -329,7 +324,7 @@ func (s *Server) updateGallery(c *gin.Context) {
 		
 		// Upload file (contoh ke local storage atau cloud)
 		// uploadedURL, err := s.uploadImage(file, header)
-		uploadedURL, err := saveUploadedFile(file, header)
+		uploadedURL, err := SaveUploadedFile(file, header)
 		if err != nil {
 			helpers.InternalServerError(c, "Failed to upload image: "+err.Error())
 			return
@@ -411,49 +406,4 @@ func (s *Server) deleteGallery(c *gin.Context) {
 	}
 	s.db.Delete(&gallery)
 	helpers.Success(c, "Gallery deleted", gallery)	
-}
-
-// Helper function to validate image file extensions
-func isValidImageFile(filename string) bool {
-	ext := strings.ToLower(filepath.Ext(filename))
-	return ext == ".jpg" || ext == ".jpeg" || ext == ".png"
-}
-
-// Helper function to save uploaded file with structured path /2025/06/05/filename.jpg
-func saveUploadedFile(file multipart.File, header *multipart.FileHeader) (string, error) {
-	// Get current date for directory structure
-	now := time.Now()
-	dateDir := fmt.Sprintf("/%d/%02d/%02d", now.Year(), now.Month(), now.Day())
-	
-	// Create base upload directory
-	baseDir := "uploads" // You can configure this path
-	fullDir := filepath.Join(baseDir, dateDir)
-	
-	// Create directory if it doesn't exist
-	if err := os.MkdirAll(fullDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create directory: %v", err)
-	}
-	
-	// Generate unique filename to avoid conflicts
-	ext := strings.ToLower(filepath.Ext(header.Filename))
-	uniqueFilename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
-	
-	// Full file path
-	filePath := filepath.Join(fullDir, uniqueFilename)
-	
-	// Create the file
-	dst, err := os.Create(filePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to create file: %v", err)
-	}
-	defer dst.Close()
-	
-	// Copy uploaded file to destination
-	if _, err := io.Copy(dst, file); err != nil {
-		// Clean up on error
-		os.Remove(filePath)
-		return "", fmt.Errorf("failed to save file: %v", err)
-	}
-	
-	return filePath, nil
 }
