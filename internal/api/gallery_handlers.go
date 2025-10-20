@@ -227,6 +227,17 @@ func (s *Server) createGallery(c *gin.Context) {
 		return
 	}
 	
+	// Broadcast ke semua connected clients
+	BroadcastNewGallery(map[string]interface{}{
+		"ID":          gallery.ID,
+		"title":       gallery.Title,
+		"description": gallery.Description,
+		"image_url":   gallery.ImageURL,
+		"category_id": gallery.CategoryID,
+		"created_at":  gallery.CreatedAt,
+		"updated_at":  gallery.UpdatedAt,
+	})
+
 	helpers.Created(c, "Gallery created successfully", gallery)
 }
 
@@ -352,6 +363,16 @@ func (s *Server) updateGallery(c *gin.Context) {
 		return
 	}
 
+	// Broadcast update
+	BroadcastUpdateGallery(map[string]interface{}{
+		"ID":          gallery.ID,
+		"title":       gallery.Title,
+		"description": gallery.Description,
+		"image_url":   gallery.ImageURL,
+		"category_id": gallery.CategoryID,
+		"updated_at":  gallery.UpdatedAt,
+	})
+
 	helpers.Success(c, "Gallery updated successfully", gallery)
 }
 
@@ -405,5 +426,8 @@ func (s *Server) deleteGallery(c *gin.Context) {
 		return
 	}
 	s.db.Delete(&gallery)
+	// Broadcast delete
+	BroadcastDeleteGallery(id)
+
 	helpers.Success(c, "Gallery deleted", gallery)	
 }

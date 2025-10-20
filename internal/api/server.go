@@ -1,11 +1,14 @@
 package api
 
 import (
+	"log"
 	"mywall-api/internal/auth"
-	// "mywall/internal/models"
+	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"gorm.io/gorm"
 	"mywall-api/internal/helpers"
 )
@@ -15,6 +18,41 @@ type Server struct {
 	router *gin.Engine
 	db     *gorm.DB
 	auth   *auth.Service
+	ws     *WebSocketManager 
+}
+
+// WebSocketManager manages WebSocket connections
+type WebSocketManager struct {
+	clients   map[*websocket.Conn]bool
+	broadcast chan Message
+	mu        sync.RWMutex
+}
+
+// Message represents a WebSocket message
+type Message struct {
+	Type    string      `json:"type"`
+	Payload interface{} `json:"payload"`
+}
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true // Allow all origins for development
+	},
+}
+
+var wsManager *WebSocketManager
+
+func init() {
+	wsManager = &WebSocketManager{
+		clients:   make(map[*websocket.Conn]bool),
+		broadcast: make(chan Message),
+	}
+	go wsManager.startBroadcasting()
+}
+
+// NewWebSocketManager creates a new WebSocket manager
+func NewWebSocketManager() *WebSocketManager {
+	return wsManager
 }
 
 // NewServer creates a new server instance
@@ -23,6 +61,7 @@ func NewServer(db *gorm.DB, auth *auth.Service) *Server {
 		router: gin.Default(),
 		db:     db,
 		auth:   auth,
+		ws:     NewWebSocketManager(),
 	}
 	server.setupRoutes()
 	return server
@@ -36,6 +75,8 @@ func (s *Server) setupRoutes() {
 		authRoutes.POST("/register", s.handleRegister)
 		authRoutes.POST("/login", s.handleLogin)
 	}
+	// WebSocket route
+	s.router.GET("/ws", s.handleWebSocket)
 
 	// Protected routes
 	apiRoutes := s.router.Group("/api")
@@ -65,7 +106,6 @@ func (s *Server) setupRoutes() {
 		apiRoutes.PUT("/menus/:id", s.updateMenu)
 		apiRoutes.DELETE("/menus/:id", s.deleteMenu)
 
-
 		apiRoutes.GET("/rbacs", s.getRbacs)
 		apiRoutes.POST("/rbacs", s.createRbac)
 		apiRoutes.GET("/rbacs/:id", s.getRbac)
@@ -77,7 +117,6 @@ func (s *Server) setupRoutes() {
 		apiRoutes.GET("/roles/:id", s.getRole)
 		apiRoutes.PUT("/roles/:id", s.updateRole)
 		apiRoutes.DELETE("/roles/:id", s.deleteRole)
-
 	}
 }
 
@@ -116,4 +155,93 @@ func (s *Server) authMiddleware() gin.HandlerFunc {
 		helpers.Unauthorized(c, "Invalid authorization token or API key required")
 		c.Abort()
 	}
+}
+
+// WebSocket handler
+func (s *Server) handleWebSocket(c *gin.Context) {
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		log.Printf("WebSocket upgrade error: %v", err)
+		return
+	}
+	defer conn.Close()
+
+	// Register client
+	wsManager.mu.Lock()
+	wsManager.clients[conn] = true
+	wsManager.mu.Unlock()
+
+	log.Printf("WebSocket client connected: %s", conn.RemoteAddr())
+	
+	// Send welcome message
+	welcomeMsg := Message{
+		Type:    "connected",
+		Payload: "Connected to WebSocket server",
+	}
+	conn.WriteJSON(welcomeMsg)
+
+	for {
+		var msg Message
+		err := conn.ReadJSON(&msg)
+		if err != nil {
+			log.Printf("WebSocket read error: %v", err)
+			wsManager.mu.Lock()
+			delete(wsManager.clients, conn)
+			wsManager.mu.Unlock()
+			break
+		}
+
+		// Handle different message types from client
+		switch msg.Type {
+		case "join_galleries":
+			log.Printf("Client joined galleries room")
+		case "ping":
+			// Respond to ping
+			conn.WriteJSON(Message{Type: "pong", Payload: "pong"})
+		}
+	}
+}
+
+func (wm *WebSocketManager) startBroadcasting() {
+	for {
+		message := <-wm.broadcast
+		wm.mu.RLock()
+		for client := range wm.clients {
+			err := client.WriteJSON(message)
+			if err != nil {
+				log.Printf("WebSocket write error: %v", err)
+				client.Close()
+				delete(wm.clients, client)
+			}
+		}
+		wm.mu.RUnlock()
+	}
+}
+
+// Helper functions untuk broadcast
+func BroadcastNewGallery(gallery map[string]interface{}) {
+	message := Message{
+		Type:    "new_gallery",
+		Payload: gallery,
+	}
+	wsManager.broadcast <- message
+	log.Printf("Broadcasted new gallery: %v", gallery["title"])
+}
+
+func BroadcastUpdateGallery(gallery map[string]interface{}) {
+	message := Message{
+		Type:    "update_gallery",
+		Payload: gallery,
+	}
+	wsManager.broadcast <- message
+	log.Printf("Broadcasted updated gallery: %v", gallery["title"])
+}
+
+func BroadcastDeleteGallery(galleryID string) {
+	message := Message{
+		Type:    "delete_gallery",
+		Payload: map[string]string{"id": galleryID},
+	}
+	wsManager.broadcast <- message
+	log.Printf("Broadcasted deleted gallery ID: %s", galleryID)
 }
