@@ -2,16 +2,10 @@ package api
 
 import (
 	"mywall-api/internal/models"
-	"net/http"
-	"fmt"
-	"os"
-	"strconv"
-	"strings"
-	"math"
+	"mywall-api/internal/helpers"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"math/rand"
 	"errors"
 )
 
@@ -21,16 +15,16 @@ type ImageViewRequest struct {
 }
 
 func (s *Server) createImageView(ctx *gin.Context) {
-	userID := c.GetUint("user_id")
+	userID := ctx.GetUint("user_id")
 	var req ImageViewRequest
 	if req.GalleryID == "" {
-		helpers.ValidationError(c, "Validation failed", map[string]string{
+		helpers.ValidationError(ctx, "Validation failed", map[string]string{
 			"gallery_id": "GalleryID is required",
 		})
 		return
 	}
 	if req.Count <= 0 {
-		helpers.ValidationError(c, "Validation failed", map[string]string{
+		helpers.ValidationError(ctx, "Validation failed", map[string]string{
 			"count": "Count must be greater than 0",
 		})
 		return
@@ -42,40 +36,70 @@ func (s *Server) createImageView(ctx *gin.Context) {
 	}
 	if result := s.db.Create(&imageView); result.Error != nil {
 		// If database creation fails and we uploaded a file, clean it up
-		helpers.InternalServerError(c, "Failed to create image view")
+		helpers.InternalServerError(ctx, "Failed to create image view")
 		return
 	}	
-	helpers.Created(c, "Image view created successfully", imageView)
+	helpers.Created(ctx, "Image view created successfully", imageView)
 }
 
 func (s *Server) updateImageView(ctx *gin.Context) {
-	userID := c.GetUint("user_id")
+	userID := ctx.GetUint("user_id")
 	var req ImageViewRequest
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		helpers.ValidationError(ctx, "Validation failed", map[string]string{
+			"request": "Invalid request body",
+		})
+		return
+	}
+	
 	if req.GalleryID == "" {
-		helpers.ValidationError(c, "Validation failed", map[string]string{
+		helpers.ValidationError(ctx, "Validation failed", map[string]string{
 			"gallery_id": "GalleryID is required",
 		})
 		return
 	}
 	if req.Count <= 0 {
-		helpers.ValidationError(c, "Validation failed", map[string]string{
+		helpers.ValidationError(ctx, "Validation failed", map[string]string{
 			"count": "Count must be greater than 0",
 		})
 		return
 	}
+
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		helpers.InternalServerError(ctx, "Failed to start transaction")
+		return
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			helpers.InternalServerError(ctx, "Transaction failed")
+		}
+	}()
+
 	var imageView models.ImageView
 	if result := s.db.Where("user_id = ? AND gallery_id = ?", userID, req.GalleryID).First(&imageView); result.Error != nil {
+		tx.Rollback()
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			helpers.NotFound(c, "Image view not found")
+			helpers.NotFound(ctx, "Image view not found")
 		} else {
-			helpers.InternalServerError(c, "Failed to get image view")
+			helpers.InternalServerError(ctx, "Failed to get image view")
 		}
 		return
 	}
 	imageView.Count = imageView.Count + req.Count
 	if result := s.db.Save(&imageView); result.Error != nil {
-		helpers.InternalServerError(c, "Failed to update image view")
+		tx.Rollback()
+		helpers.InternalServerError(ctx, "Failed to update image view")
 		return
 	}
-	helpers.OK(c, "Image view updated successfully", imageView)
+
+	if result := tx.Commit(); result.Error != nil {
+		tx.Rollback()
+		helpers.InternalServerError(ctx, "Failed to commit transaction")
+		return
+	}
+	helpers.Success(ctx, "Image view updated successfully", imageView)
 }
