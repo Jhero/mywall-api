@@ -14,6 +14,7 @@ import (
 
 func (s *Server) serveImage(c *gin.Context) {
 	// fmt.Println("Masuk-1")
+	userID := c.GetUint("user_id")
     year := c.Param("year")
     month := c.Param("month")
     day := c.Param("day")
@@ -38,7 +39,7 @@ func (s *Server) serveImage(c *gin.Context) {
 		return
 	}
     service := helpers.NewImageViewService(s.db)        
-    _, err := service.CreateOrUpdateImageView(gallery.ID, 1)
+    _, err := service.CreateOrUpdateImageView(gallery.ID, userID, 1)
     if err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update image view"})
         return

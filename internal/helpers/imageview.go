@@ -7,9 +7,9 @@ import (
 )
 
 type ImageView struct {
-	ID        uint      `gorm:"primaryKey"`
-	GalleryID uint      `gorm:"not null"`
+	GalleryID uint      `gorm:"primaryKey"`
 	Count     int       `gorm:"default:0"`
+	UserID    uint      `gorm:"not null"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -24,7 +24,7 @@ func NewImageViewService(db *gorm.DB) *ImageViewService {
 }
 
 // CreateOrUpdateImageView membuat atau mengupdate image view
-func (s *ImageViewService) CreateOrUpdateImageView(galleryID uint, count int) (*ImageView, error) {
+func (s *ImageViewService) CreateOrUpdateImageView(galleryID uint, userID uint, count int) (*ImageView, error) {
 	var imageView ImageView
 	
 	// Mulai transaction
@@ -43,6 +43,7 @@ func (s *ImageViewService) CreateOrUpdateImageView(galleryID uint, count int) (*
 			// Buat baru jika tidak ditemukan
 			imageView = ImageView{
 				GalleryID: galleryID,
+				UserID:    userID,
 				Count:     count,
 			}
 			if err := tx.Create(&imageView).Error; err != nil {
