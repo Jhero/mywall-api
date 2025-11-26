@@ -88,6 +88,9 @@ func (s *Server) setupRoutes() {
 		apiRoutes.GET("/images/:year/:month/:day/:filename", s.serveImage)
 
 		// Other API routes
+		apiRoutes.POST("/imageviews", s.createImageView)
+		apiRoutes.PUT("/imageviews", s.updateImageView)
+
 		apiRoutes.GET("/galleries", s.getGalleries)
 		apiRoutes.POST("/galleries", s.createGallery)
 		apiRoutes.GET("/galleries/:id", s.getGallery)
