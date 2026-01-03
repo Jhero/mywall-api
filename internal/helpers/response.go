@@ -42,6 +42,10 @@ func NotFound(c *gin.Context, message string) {
 	SendResponse(c, http.StatusNotFound, false, message, nil)
 }
 
+func NotContent(c *gin.Context, message string) {
+	SendResponse(c, http.StatusNoContent, false, message, nil)
+}
+
 // InternalServerError sends a server error response with status code 500
 func InternalServerError(c *gin.Context, message string) {
 	SendResponse(c, http.StatusInternalServerError, false, message, nil)
