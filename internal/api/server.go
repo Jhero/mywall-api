@@ -258,3 +258,12 @@ func BroadcastNotification(notification map[string]interface{}) {
 	wsManager.broadcast <- message
 	log.Printf("Broadcasted notification: %v", notification["title"])
 }
+
+func BroadcastBadgeUpdate(userID uint, unreadCount int64) {
+	message := Message{
+		Type:    "badge_update",
+		Payload: map[string]interface{}{"user_id": userID, "unread": unreadCount},
+	}
+	wsManager.broadcast <- message
+	log.Printf("Broadcasted badge update for user %d: %d unread", userID, unreadCount)
+}

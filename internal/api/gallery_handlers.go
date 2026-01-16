@@ -238,7 +238,7 @@ func (s *Server) createGallery(c *gin.Context) {
 		userID,
 		"Gallery Created",
 		"A new gallery has been created",
-		"gallery",
+		"message",
 		map[string]interface{}{"title": gallery.Title},
 	)
 

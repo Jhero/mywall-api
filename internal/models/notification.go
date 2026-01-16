@@ -10,6 +10,6 @@ type Notification struct {
 	Body        string `json:"body"`
 	Metadata    string `json:"metadata"`
 	Type        string `json:"type" gorm:"not null"`
-	IsRead      bool   `json:"is_read" gorm:"default:false"`
+	IsRead      int    `json:"is_read" gorm:"default:0"`
 	UserID      uint    `json:"user_id"`
 }

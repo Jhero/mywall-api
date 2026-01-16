@@ -47,7 +47,7 @@ func (h *NotificationHandlers) CreateNotificationDirect(userID uint, title, body
         Body:     body,
         Type:     notifType,
         Metadata: string(metadataJSON),
-        IsRead:   false,
+        IsRead:   0,
     }
     
     if err := h.db.Create(&n).Error; err != nil {
@@ -95,24 +95,24 @@ func (h *Server) createNotification(c *gin.Context) {
         "body":     input.Body,
         "type":     input.Type,
         "metadata": input.Metadata,
-        "is_read":  false,
+        "is_read":  0,
     })
 }
 
 // markRead: tandai notifikasi sebagai dibaca
 func (h *Server) markRead(c *gin.Context) {
     var input struct {
-        UserID  uint   `json:"userId"`   // PERBAIKAN: Ubah ke uint
-        NotifID string `json:"notifId"`
+        UserID  uint   `json:"user_Id"`   // PERBAIKAN: Ubah ke uint
+        NotifID string `json:"notif_Id"`
     }
     if err := c.ShouldBindJSON(&input); err != nil {
         helpers.BadRequest(c, "invalid payload")
         return
     }
-
+	log.Printf("Marking notification %s as read for user %d", input.NotifID, input.UserID)
     if err := h.db.Model(&models.Notification{}).
         Where("id = ? AND user_id = ?", input.NotifID, input.UserID).
-        Update("is_read", true).Error; err != nil {
+        Update("is_read", 1).Error; err != nil {
         helpers.InternalServerError(c, "failed to mark read")
         return
     }
@@ -120,12 +120,9 @@ func (h *Server) markRead(c *gin.Context) {
     // Broadcast badge update
     var unreadCount int64
     h.db.Model(&models.Notification{}).
-        Where("user_id = ? AND is_read = false", input.UserID).
+        Where("user_id = ? AND is_read = 0", input.UserID).
         Count(&unreadCount)
-    BroadcastNotification(map[string]interface{}{
-        "user_id": input.UserID,
-        "unread":  unreadCount,
-    })
+    BroadcastBadgeUpdate(input.UserID, unreadCount)
     helpers.Success(c, "notification marked read", map[string]interface{}{
         "user_id": input.UserID,
         "unread":  unreadCount,

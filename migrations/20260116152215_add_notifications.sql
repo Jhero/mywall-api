@@ -8,9 +8,9 @@ CREATE TABLE IF NOT EXISTS notifications (
   user_id INT NOT NULL,
   title TEXT NOT NULL,
   body TEXT NOT NULL,
-  type VARCHAR(50) NOT NULL,
+  type VARCHAR(50) NOT NULL,  -- e.g. "system", "message", "alert"
   metadata JSON,
-  is_read BOOLEAN NOT NULL DEFAULT FALSE,
+  is_read INT NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   deleted_at TIMESTAMP NULL,
