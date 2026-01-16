@@ -9,5 +9,5 @@ type Gallery struct {
 	Description string `json:"description"`
 	ImageURL    string `json:"image_url" gorm:"not null"`
 	CategoryID  uint   `json:"category_id" gorm:"not null"`
-	UserID      uint   `json:"user_id"`
+	UserID      uint    `json:"user_id"`
 }

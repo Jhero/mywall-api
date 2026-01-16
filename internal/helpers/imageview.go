@@ -9,7 +9,7 @@ import (
 type ImageView struct {
 	GalleryID uint      `gorm:"primaryKey"`
 	Count     int       `gorm:"default:0"`
-	UserID    uint      `gorm:"not null"`
+	UserID    uint       `gorm:"not null"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

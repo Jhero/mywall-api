@@ -8,5 +8,5 @@ type Role struct {
 	ID 			string `json:"ID" gorm:"unique"`
 	Name       	string `json:"name" gorm:"unique"`
 	Description string `json:"description"`
-	UserID     	uint   `json:"user_id"`
+	UserID     	uint    `json:"user_id"`
 }

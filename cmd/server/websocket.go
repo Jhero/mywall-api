@@ -96,3 +96,8 @@ func BroadcastDeleteGallery(galleryID string) {
     broadcastMessage("delete_gallery", map[string]string{"id": galleryID})
     log.Printf("Broadcasted deleted gallery ID: %s", galleryID)
 }
+
+func BroadcastNotification(notification map[string]interface{}) {
+    broadcastMessage("notification", notification)
+    log.Printf("Broadcasted notification: %v", notification["title"])
+}

@@ -86,7 +86,11 @@ func (s *Server) setupRoutes() {
 		apiRoutes.POST("/regenerate-api-key", s.handleRegenerateApiKey)
 
 		apiRoutes.GET("/images/:year/:month/:day/:filename", s.serveImage)
-
+		
+		apiRoutes.GET("/notifications", s.listNotifications)
+		apiRoutes.POST("/notifications", s.createNotification)
+		apiRoutes.POST("/notifications/read", s.markRead)
+		
 		// Other API routes
 		apiRoutes.GET("/galleries", s.getGalleries)
 		apiRoutes.POST("/galleries", s.createGallery)
@@ -244,4 +248,13 @@ func BroadcastDeleteGallery(galleryID string) {
 	}
 	wsManager.broadcast <- message
 	log.Printf("Broadcasted deleted gallery ID: %s", galleryID)
+}
+
+func BroadcastNotification(notification map[string]interface{}) {
+	message := Message{
+		Type:    "notification",
+		Payload: notification,
+	}
+	wsManager.broadcast <- message
+	log.Printf("Broadcasted notification: %v", notification["title"])
 }

@@ -2,7 +2,7 @@ package api
 
 import (
 	"mywall-api/internal/models"
-	"net/http"
+	// "net/http"
 	"fmt"
 	"os"
 	"strconv"
@@ -14,9 +14,9 @@ import (
 	"gorm.io/gorm"
 	"math/rand"
 	"errors"
+	
 	// "log"
 )
-
 type GalleryRequest struct {
 	Title    	string `json:"title" binding:"required,max=100"`
 	Description string `json:"description" binding:"required,max=500"`
@@ -121,7 +121,7 @@ func (s *Server) getGallery(c *gin.Context) {
 	id := c.Param("id")
 	var gallery models.Gallery
 	if err := s.db.Where("id = ? AND user_id = ?", id, userID).First(&gallery).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Gallery not found"})
+		helpers.NotFound(c, "Gallery not found")
 		return
 	}
 	helpers.Success(c, "Gallery retrieved successfully", gallery)	
@@ -231,6 +231,22 @@ func (s *Server) createGallery(c *gin.Context) {
 		CategoryID:  req.CategoryID,
 		UserID:      userID,
 	}
+
+    // Panggil NotificationHandlers
+	notifHandler := &NotificationHandlers{db: s.db}
+	_ = notifHandler.CreateNotificationDirect(
+		userID,
+		"Gallery Created",
+		"A new gallery has been created",
+		"gallery",
+		map[string]interface{}{"title": gallery.Title},
+	)
+
+
+	// h := &NotificationHandlers{}
+	// h.createNotification(s.db, userID, "Gallery Created", "A new gallery has been created", "gallery", map[string]string{
+	// 	"title": gallery.Title,
+	// })
 	
 	if result := s.db.Create(&gallery); result.Error != nil {
 		// If database creation fails, clean up the uploaded file
