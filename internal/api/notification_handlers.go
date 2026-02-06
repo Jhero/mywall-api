@@ -19,19 +19,24 @@ type NotificationHandlers struct {
 // listNotifications: ambil semua notifikasi user
 func (h *Server) listNotifications(c *gin.Context) {
     userIDVal, exists := c.Get("user_id")
-    if !exists {	
+    if !exists {
         helpers.Unauthorized(c, "unauthorized")
         return
     }
     userID := userIDVal.(uint)
 
     var notifs []models.Notification
-    if err := h.db.Where("user_id = ?", userID).Order("created_at DESC").Find(&notifs).Error; err != nil {
+    if err := h.db.
+        Where("user_id = ?", userID).
+        Order("created_at DESC").
+        Find(&notifs).Error; err != nil {
         helpers.InternalServerError(c, "failed to fetch notifications")
         return
     }
+
     helpers.Success(c, "notifications fetched", notifs)
 }
+
 
 // PERBAIKAN: Method CreateNotificationDirect sekarang bisa akses h.db
 func (h *NotificationHandlers) CreateNotificationDirect(userID uint, title, body, notifType string, metadata map[string]interface{}) error {
@@ -111,7 +116,7 @@ func (h *Server) markRead(c *gin.Context) {
     }
 	log.Printf("Marking notification %s as read for user %d", input.NotifID, input.UserID)
     if err := h.db.Model(&models.Notification{}).
-        Where("id = ? AND user_id = ?", input.NotifID, input.UserID).
+        Where("user_id = ? AND id = ?", input.UserID, input.NotifID).
         Update("is_read", 1).Error; err != nil {
         helpers.InternalServerError(c, "failed to mark read")
         return

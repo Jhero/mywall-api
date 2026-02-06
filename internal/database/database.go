@@ -14,5 +14,5 @@ func Connect(dsn string) (*gorm.DB, error) {
 
 // Migrate runs database migrations
 func Migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&models.Gallery{}, &models.User{})
+	return db.AutoMigrate(&models.Gallery{}, &models.User{}, &models.Setting{}, &models.UserApp{})
 }

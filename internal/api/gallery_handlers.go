@@ -237,8 +237,8 @@ func (s *Server) createGallery(c *gin.Context) {
 	_ = notifHandler.CreateNotificationDirect(
 		userID,
 		"Gallery Created",
-		"A new gallery has been created",
-		"message",
+		"A new gallery "+category.Name+" has been created",
+		"notification",
 		map[string]interface{}{"title": gallery.Title},
 	)
 
